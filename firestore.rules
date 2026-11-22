@@ -1,0 +1,217 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny everything
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connectivity health-check document (returns not-found cleanly without permission error)
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerifiedUser() && (
+        request.auth.token.email == '7509shubham@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isSafeOptionalUrl(val) {
+      return val is string && val.size() <= 1000 && (
+        val == '' ||
+        val.matches('^https?://.*') ||
+        val.matches('^/src/assets/.*') ||
+        val.matches('^/assets/.*')
+      );
+    }
+
+    function isValidBookCategory(cat) {
+      return cat in [
+        'Books & Literature',
+        'Spirituality & Gita',
+        'Psychology & Mind',
+        'Philosophy',
+        'Science & Knowledge',
+        'Self-Improvement',
+        'History & Culture'
+      ];
+    }
+
+    function isValidCoverStyle(style) {
+      return style in ['gita', 'essentialism', 'meditations', 'meaning', 'atomic', 'custom'];
+    }
+
+    function isValidTakeaways(arr) {
+      return arr is list && arr.size() <= 10 && (
+        arr.size() == 0 || (arr[0] is string && arr[0].size() <= 300)
+      );
+    }
+
+    function isValidBook(data) {
+      return data.keys().hasAll([
+        'title', 'subtitle', 'author', 'category', 'coverUrl', 'coverStyle',
+        'summary', 'keyTakeaways', 'quote', 'pdfUrl', 'readTime',
+        'featured', 'displayOrder', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'subtitle', 'author', 'category', 'coverUrl', 'coverStyle',
+        'summary', 'keyTakeaways', 'quote', 'pdfUrl', 'readTime',
+        'featured', 'displayOrder', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+      data.subtitle is string && data.subtitle.size() <= 240 &&
+      data.author is string && data.author.size() >= 1 && data.author.size() <= 120 &&
+      isValidBookCategory(data.category) &&
+      isSafeOptionalUrl(data.coverUrl) &&
+      isValidCoverStyle(data.coverStyle) &&
+      data.summary is string && data.summary.size() >= 10 && data.summary.size() <= 15000 &&
+      isValidTakeaways(data.keyTakeaways) &&
+      data.quote is string && data.quote.size() <= 500 &&
+      isSafeOptionalUrl(data.pdfUrl) &&
+      data.readTime is string && data.readTime.size() >= 1 && data.readTime.size() <= 40 &&
+      data.featured is bool &&
+      data.displayOrder is number && data.displayOrder >= 0 && data.displayOrder <= 100000 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidInsight(data) {
+      return data.keys().hasAll(['title', 'type', 'content', 'source', 'featuredWeekly', 'createdAt']) &&
+      data.keys().hasOnly(['title', 'type', 'content', 'source', 'featuredWeekly', 'createdAt']) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+      data.type in ['wisdom', 'shloka', 'insight', 'reading_list'] &&
+      data.content is string && data.content.size() >= 1 && data.content.size() <= 4000 &&
+      data.source is string && data.source.size() <= 160 &&
+      data.featuredWeekly is bool &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidAdSetting(data) {
+      return data.keys().hasAll([
+        'slotKey', 'enabled', 'mode', 'adsenseClientId', 'adsenseSlotId',
+        'sponsorTitle', 'sponsorDescription', 'sponsorCtaText',
+        'sponsorUrl', 'sponsorImageUrl', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'slotKey', 'enabled', 'mode', 'adsenseClientId', 'adsenseSlotId',
+        'sponsorTitle', 'sponsorDescription', 'sponsorCtaText',
+        'sponsorUrl', 'sponsorImageUrl', 'updatedAt'
+      ]) &&
+      data.slotKey in ['adsense_global', 'slot_banner', 'slot_sidebar', 'slot_reader'] &&
+      data.enabled is bool &&
+      data.mode in ['adsense', 'sponsor'] &&
+      data.adsenseClientId is string && data.adsenseClientId.size() <= 80 &&
+      data.adsenseSlotId is string && data.adsenseSlotId.size() <= 80 &&
+      data.sponsorTitle is string && data.sponsorTitle.size() <= 120 &&
+      data.sponsorDescription is string && data.sponsorDescription.size() <= 300 &&
+      data.sponsorCtaText is string && data.sponsorCtaText.size() <= 60 &&
+      isSafeOptionalUrl(data.sponsorUrl) &&
+      isSafeOptionalUrl(data.sponsorImageUrl) &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidSubscriber(data) {
+      return data.keys().hasAll(['email', 'createdAt']) &&
+      data.keys().hasOnly(['email', 'createdAt']) &&
+      data.email is string &&
+      data.email.size() >= 5 &&
+      data.email.size() <= 160 &&
+      data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$') &&
+      data.createdAt is timestamp &&
+      data.createdAt == request.time;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+      data.keys().hasOnly(['email', 'role', 'createdAt']) &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 160 &&
+      data.role == 'admin' &&
+      data.createdAt is timestamp;
+    }
+
+    match /books/{bookId} {
+      allow get: if isValidId(bookId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(bookId) && isValidBook(incoming()) &&
+        incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(bookId) && isValidBook(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'subtitle', 'author', 'category', 'coverUrl', 'coverStyle',
+          'summary', 'keyTakeaways', 'quote', 'pdfUrl', 'readTime',
+          'featured', 'displayOrder', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(bookId);
+    }
+
+    match /insights/{insightId} {
+      allow get: if isValidId(insightId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(insightId) && isValidInsight(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidId(insightId) && isValidInsight(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title', 'type', 'content', 'source', 'featuredWeekly'
+        ]);
+      allow delete: if isAdmin() && isValidId(insightId);
+    }
+
+    match /adSettings/{slotId} {
+      allow get: if isValidId(slotId);
+      allow list: if true;
+      allow create: if isAdmin() && isValidId(slotId) && isValidAdSetting(incoming()) &&
+        incoming().slotKey == slotId && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidId(slotId) && isValidAdSetting(incoming()) &&
+        incoming().slotKey == existing().slotKey &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'enabled', 'mode', 'adsenseClientId', 'adsenseSlotId',
+          'sponsorTitle', 'sponsorDescription', 'sponsorCtaText',
+          'sponsorUrl', 'sponsorImageUrl', 'updatedAt'
+        ]);
+      allow delete: if isAdmin() && isValidId(slotId);
+    }
+
+    match /subscribers/{subscriberId} {
+      allow get: if isAdmin() && isValidId(subscriberId);
+      allow list: if isAdmin();
+      allow create: if isValidId(subscriberId) && isValidSubscriber(incoming());
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(subscriberId);
+    }
+
+    match /admins/{adminId} {
+      allow get: if isAdmin() && isValidId(adminId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidId(adminId) && isValidAdminUser(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(adminId) && adminId != request.auth.uid;
+    }
+  }
+}

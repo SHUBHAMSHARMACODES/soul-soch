@@ -1,0 +1,269 @@
+{
+  "entities": {
+    "Book": {
+      "title": "Book",
+      "description": "A curated book with editorial summary, key takeaways, quote, and optional online PDF redirect URL.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Title of the book",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "subtitle": {
+          "type": "string",
+          "description": "Short 1-line hook or subtitle",
+          "minLength": 0,
+          "maxLength": 240
+        },
+        "author": {
+          "type": "string",
+          "description": "Author name",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Primary reading category",
+          "enum": [
+            "Books & Literature",
+            "Spirituality & Gita",
+            "Psychology & Mind",
+            "Philosophy",
+            "Science & Knowledge",
+            "Self-Improvement",
+            "History & Culture"
+          ]
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "Image path or external HTTPS URL for the book cover",
+          "maxLength": 1000
+        },
+        "coverStyle": {
+          "type": "string",
+          "description": "Preset cover style key when using curated artwork",
+          "enum": ["gita", "essentialism", "meditations", "meaning", "atomic", "custom"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "Detailed book summary in editorial paragraphs",
+          "minLength": 10,
+          "maxLength": 15000
+        },
+        "keyTakeaways": {
+          "type": "array",
+          "description": "List of up to 10 key takeaways from the book"
+        },
+        "quote": {
+          "type": "string",
+          "description": "Notable quote from the book",
+          "maxLength": 500
+        },
+        "pdfUrl": {
+          "type": "string",
+          "description": "External redirect URL to read or download the online PDF",
+          "maxLength": 1000
+        },
+        "readTime": {
+          "type": "string",
+          "description": "Estimated summary reading time",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "featured": {
+          "type": "boolean",
+          "description": "Whether the book appears in the Popular Books row"
+        },
+        "displayOrder": {
+          "type": "number",
+          "description": "Display sort order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp"
+        }
+      },
+      "required": [
+        "title",
+        "subtitle",
+        "author",
+        "category",
+        "coverUrl",
+        "coverStyle",
+        "summary",
+        "keyTakeaways",
+        "quote",
+        "pdfUrl",
+        "readTime",
+        "featured",
+        "displayOrder",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Insight": {
+      "title": "Insight",
+      "description": "Philosophical quote, Gita Shloka, or curated reading insight.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "type": {
+          "type": "string",
+          "enum": ["wisdom", "shloka", "insight", "reading_list"]
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "featuredWeekly": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["title", "type", "content", "source", "featuredWeekly", "createdAt"]
+    },
+    "AdSetting": {
+      "title": "AdSetting",
+      "description": "Monetization configuration for Google AdSense or custom sponsored banners.",
+      "type": "object",
+      "properties": {
+        "slotKey": {
+          "type": "string",
+          "enum": ["adsense_global", "slot_banner", "slot_sidebar", "slot_reader"]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["adsense", "sponsor"]
+        },
+        "adsenseClientId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "adsenseSlotId": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "sponsorTitle": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "sponsorDescription": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "sponsorCtaText": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "sponsorUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "sponsorImageUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "slotKey",
+        "enabled",
+        "mode",
+        "adsenseClientId",
+        "adsenseSlotId",
+        "sponsorTitle",
+        "sponsorDescription",
+        "sponsorCtaText",
+        "sponsorUrl",
+        "sponsorImageUrl",
+        "updatedAt"
+      ]
+    },
+    "Subscriber": {
+      "title": "Subscriber",
+      "description": "Newsletter subscriber email record (PII protected: admin read only).",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email", "createdAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized admin profile record.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/books/{bookId}": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Publicly readable catalog of book summaries and PDF redirect links; writable only by admin."
+    },
+    "/insights/{insightId}": {
+      "schema": { "$ref": "#/entities/Insight" },
+      "description": "Publicly readable weekly wisdom quotes, Bhagavad Gita shlokas, and curated insights; writable only by admin."
+    },
+    "/adSettings/{slotId}": {
+      "schema": { "$ref": "#/entities/AdSetting" },
+      "description": "Publicly readable ad slot settings for rendering AdSense or sponsored banners; writable only by admin."
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "#/entities/Subscriber" },
+      "description": "Newsletter subscription emails; anyone can create a valid email subscription, only admin can read or delete."
+    },
+    "/admins/{adminId}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin role records; readable/writable only by verified admin."
+    }
+  }
+}
