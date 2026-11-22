@@ -18,14 +18,18 @@ const localConfigModules = import.meta.glob<{ default: AppletFirebaseConfig }>(
 );
 const localConfig = Object.values(localConfigModules)[0]?.default;
 
+const cleanEnv = (val?: string): string =>
+  (val || '').replace(/[\s"']/g, '');
+
 const firebaseConfig: AppletFirebaseConfig = localConfig ?? {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)',
+  apiKey: cleanEnv(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: cleanEnv(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: cleanEnv(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: cleanEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: cleanEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: cleanEnv(import.meta.env.VITE_FIREBASE_APP_ID),
+  firestoreDatabaseId:
+    cleanEnv(import.meta.env.VITE_FIREBASE_DATABASE_ID) || '(default)',
 };
 
 export const ADMIN_EMAIL = '7509shubham@gmail.com';
