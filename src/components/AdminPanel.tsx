@@ -1180,14 +1180,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <ol className="space-y-4 text-sm text-[#35302A]">
               <li>
                 <span className="font-semibold text-[#1D1B18]">01. Push &amp; Import in Vercel:</span>{' '}
-                Push this codebase to GitHub and import the repository in Vercel. Framework Preset: <strong>Vite</strong>, Build Command: <code>npm run build</code>, Output Directory: <code>dist</code>.
+                Push this codebase to GitHub (with <code>firebase-applet-config.json</code> gitignored) and import the repository in Vercel. Framework Preset: <strong>Vite</strong>, Build Command: <code>npm run build</code>, Output Directory: <code>dist</code>.
               </li>
               <li>
-                <span className="font-semibold text-[#1D1B18]">02. Authorize Your Vercel Domain in Firebase:</span>{' '}
+                <span className="font-semibold text-[#1D1B18]">02. Add Firebase Env Vars in Vercel:</span>{' '}
+                In Vercel &rarr; Project Settings &rarr; Environment Variables, add the 7 <code>VITE_FIREBASE_*</code> variables listed in <code>.env.example</code> using the values from your local <code>firebase-applet-config.json</code>.
+              </li>
+              <li>
+                <span className="font-semibold text-[#1D1B18]">03. Authorize Your Vercel Domain in Firebase:</span>{' '}
                 In Firebase Console &rarr; Authentication &rarr; Settings &rarr; Authorized domains, add your live Vercel domain (e.g. <code>your-site.vercel.app</code>) so Admin Google Sign-In works on your custom URL.
               </li>
               <li>
-                <span className="font-semibold text-[#1D1B18]">03. Hidden Admin Access:</span>{' '}
+                <span className="font-semibold text-[#1D1B18]">04. Hidden Admin Access:</span>{' '}
                 Visit <code>https://your-site.vercel.app/admin</code> or press <code>Ctrl+Shift+A</code> (<code>Cmd+Shift+A</code> on Mac) anytime to manage books, PDF links, summaries, and AdSense placements.
               </li>
             </ol>
