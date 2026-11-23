@@ -57,6 +57,8 @@ function SoulAndSochApp() {
   const [selectedCategory, setSelectedCategory] = useState<BookCategory | 'All'>('All');
   const [searchQuery, setSearchQuery] = useState<string>(getInitialSearchQuery);
   const [showAllBooks, setShowAllBooks] = useState(false);
+  const [booksLoaded, setBooksLoaded] = useState(false);
+  const [requestedBookId, setRequestedBookId] = useState<string | null>(getBookIdFromPath);
   const [activeBook, setActiveBook] = useState<Book | null>(() => {
     const id = getBookIdFromPath();
     return id ? DEFAULT_BOOKS.find((b) => b.id === id) || null : null;
@@ -67,16 +69,19 @@ function SoulAndSochApp() {
 
   // Live Firestore subscriptions with graceful curated starter fallback
   useEffect(() => {
-    const unsubBooks = subscribeBooks((liveBooks) => {
-      if (liveBooks.length > 0) {
-        setBooks(liveBooks);
-        const urlBookId = getBookIdFromPath();
-        if (urlBookId) {
-          const matched = liveBooks.find((b) => b.id === urlBookId);
-          if (matched) setActiveBook(matched);
+    const unsubBooks = subscribeBooks(
+      (liveBooks) => {
+        if (liveBooks.length > 0) {
+          setBooks(liveBooks);
+          const urlBookId = getBookIdFromPath();
+          if (urlBookId) {
+            const matched = liveBooks.find((b) => b.id === urlBookId);
+            setActiveBook(matched || null);
+          }
         }
-      }
-    });
+      },
+      () => setBooksLoaded(true)
+    );
 
     const unsubInsights = subscribeInsights((liveInsights) => {
       if (liveInsights.length > 0) {
@@ -100,6 +105,7 @@ function SoulAndSochApp() {
     const onPopState = () => {
       setAdminView(isAdminPath());
       const urlBookId = getBookIdFromPath();
+      setRequestedBookId(urlBookId);
       setActiveBook(urlBookId ? books.find((b) => b.id === urlBookId) || null : null);
     };
     const onKeyDown = (e: KeyboardEvent) => {
@@ -117,6 +123,7 @@ function SoulAndSochApp() {
   }, [books]);
 
   const openBook = (book: Book) => {
+    setRequestedBookId(book.id);
     setActiveBook(book);
     const targetPath = `/books/${encodeURIComponent(book.id)}`;
     if (window.location.pathname !== targetPath) {
@@ -125,6 +132,7 @@ function SoulAndSochApp() {
   };
 
   const closeBook = () => {
+    setRequestedBookId(null);
     setActiveBook(null);
     if (window.location.pathname.startsWith('/books/')) {
       window.history.pushState({}, '', '/');
@@ -132,6 +140,7 @@ function SoulAndSochApp() {
   };
 
   const openAdmin = () => {
+    setRequestedBookId(null);
     setActiveBook(null);
     window.history.pushState({}, '', '/admin');
     setAdminView(true);
@@ -139,10 +148,15 @@ function SoulAndSochApp() {
   };
 
   const closeAdmin = () => {
+    setRequestedBookId(null);
     window.history.pushState({}, '', '/');
     setAdminView(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const isLoadingBook = Boolean(requestedBookId && !activeBook && !booksLoaded);
+  const notFoundSlug =
+    requestedBookId && !activeBook && booksLoaded ? requestedBookId : null;
 
   const scrollToElement = (selector: string) => {
     const el = document.querySelector(selector);
@@ -199,7 +213,11 @@ function SoulAndSochApp() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F2EA] text-[#1D1B18]">
-      <SeoManager activeBook={activeBook} isAdmin={false} />
+      <SeoManager
+        activeBook={activeBook}
+        isAdmin={false}
+        notFoundSlug={notFoundSlug}
+      />
       <Header
         searchQuery={searchQuery}
         onSearchChange={(val) => {
@@ -387,6 +405,8 @@ function SoulAndSochApp() {
       <BookDetailModal
         book={activeBook}
         adSettings={adSettings}
+        loading={isLoadingBook}
+        notFoundSlug={notFoundSlug}
         onClose={closeBook}
         onAnchorClick={(href) => scrollToElement(href)}
       />

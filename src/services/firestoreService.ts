@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   onSnapshot,
   orderBy,
@@ -18,10 +19,32 @@ export function sanitizeSlugId(raw: string): string {
   const cleaned = raw
     .toLowerCase()
     .trim()
+    .replace(/['’`]/g, '')
     .replace(/[^a-z0-9_\-]+/g, '-')
+    .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 80);
-  return cleaned || `item-${Date.now()}`;
+  return cleaned || `book-${Date.now().toString(36)}`;
+}
+
+async function resolveUniqueBookSlug(title: string): Promise<string> {
+  const baseSlug = sanitizeSlugId(title);
+  try {
+    const firstCheck = await getDoc(doc(db, 'books', baseSlug));
+    if (!firstCheck.exists()) {
+      return baseSlug;
+    }
+    for (let i = 2; i <= 25; i++) {
+      const candidate = `${baseSlug.slice(0, 74)}-${i}`;
+      const snap = await getDoc(doc(db, 'books', candidate));
+      if (!snap.exists()) {
+        return candidate;
+      }
+    }
+  } catch {
+    // Fall back safely if lookup fails
+  }
+  return `${baseSlug.slice(0, 68)}-${Date.now().toString(36)}`;
 }
 
 export function sanitizeUrl(url: string): string {
@@ -118,7 +141,10 @@ export async function saveBook(
   },
   isEdit: boolean
 ): Promise<string> {
-  const id = isEdit && bookData.id ? bookData.id : `${sanitizeSlugId(bookData.title)}-${Date.now().toString(36)}`;
+  const id =
+    isEdit && bookData.id
+      ? bookData.id
+      : await resolveUniqueBookSlug(bookData.title);
   const path = `books/${id}`;
 
   const payload = {

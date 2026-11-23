@@ -17,6 +17,7 @@ import {
 interface SeoManagerProps {
   activeBook: Book | null;
   isAdmin: boolean;
+  notFoundSlug?: string | null;
 }
 
 function upsertMeta(
@@ -68,6 +69,7 @@ function upsertJsonLd(data: Record<string, unknown> | null) {
 export const SeoManager: React.FC<SeoManagerProps> = ({
   activeBook,
   isAdmin,
+  notFoundSlug,
 }) => {
   useEffect(() => {
     if (isAdmin) {
@@ -75,6 +77,15 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
       upsertMeta('name', 'robots', 'noindex, nofollow');
       upsertMeta('name', 'description', 'Private Curator Studio for Soul & Soch.');
       upsertCanonical(`${SITE_URL}/admin`);
+      upsertJsonLd(null);
+      return;
+    }
+
+    if (notFoundSlug) {
+      document.title = `Book Not Found – ${SITE_NAME}`;
+      upsertMeta('name', 'robots', 'noindex, nofollow');
+      upsertMeta('name', 'description', HOME_DESCRIPTION);
+      upsertCanonical(getBookCanonicalUrl(notFoundSlug));
       upsertJsonLd(null);
       return;
     }
@@ -133,7 +144,7 @@ export const SeoManager: React.FC<SeoManagerProps> = ({
     upsertMeta('name', 'twitter:image', DEFAULT_OG_IMAGE);
 
     upsertJsonLd(buildHomeJsonLd());
-  }, [activeBook, isAdmin]);
+  }, [activeBook, isAdmin, notFoundSlug]);
 
   return null;
 };

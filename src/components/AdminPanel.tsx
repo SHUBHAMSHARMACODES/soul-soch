@@ -751,6 +751,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       <p className="text-xs text-[#696054] mt-0.5">
                         {book.author} &middot; {book.category}
                       </p>
+                      <a
+                        href={`/books/${book.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-flex items-center gap-1 text-xs text-[#5B554B] hover:text-[#1D1B18] hover:underline mr-4"
+                      >
+                        <span>/books/{book.id}</span>
+                      </a>
                       {book.pdfUrl && (
                         <a
                           href={book.pdfUrl}

@@ -5,19 +5,43 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {DEFAULT_BOOKS} from './src/data/defaultBooks';
 import {
-  buildBookJsonLd,
-  getBookCanonicalUrl,
-  getBookSeoDescription,
-  getBookSeoTitle,
-  resolveBookImageUrl,
+  buildSitemapXml,
+  fetchBooksFromFirestoreRest,
+  injectBookSeoHtml,
+  SitemapBookEntry,
 } from './src/seo/seoConfig';
 
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function cleanEnv(val?: string): string {
+  return (val || '').replace(/[\s"']/g, '');
+}
+
+function resolveBuildFirebaseIds(rootDir: string): {
+  projectId: string;
+  databaseId: string;
+} {
+  let projectId = cleanEnv(process.env.VITE_FIREBASE_PROJECT_ID);
+  let databaseId = cleanEnv(process.env.VITE_FIREBASE_DATABASE_ID);
+
+  if (!projectId) {
+    const configPath = path.resolve(rootDir, 'firebase-applet-config.json');
+    if (fs.existsSync(configPath)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(configPath, 'utf-8')) as {
+          projectId?: string;
+          firestoreDatabaseId?: string;
+        };
+        projectId = cleanEnv(parsed.projectId);
+        databaseId = cleanEnv(parsed.firestoreDatabaseId);
+      } catch {
+        // Ignore parse error
+      }
+    }
+  }
+
+  return {
+    projectId,
+    databaseId: databaseId || '(default)',
+  };
 }
 
 export default defineConfig(() => {
@@ -43,13 +67,58 @@ export default defineConfig(() => {
           }
         },
       },
-      // Generates pre-rendered SEO HTML pages at dist/books/<id>/index.html
-      // so crawlers and social bots get unique per-book meta tags, canonical URLs,
-      // and Book + BreadcrumbList JSON-LD directly with HTTP 200 OK.
+      // Serves dynamic /sitemap.xml during local Vite dev/preview
+      {
+        name: 'dynamic-sitemap-dev-middleware',
+        configureServer(server) {
+          server.middlewares.use('/sitemap.xml', async (_req, res) => {
+            const {projectId, databaseId} = resolveBuildFirebaseIds(__dirname);
+            const liveBooks = await fetchBooksFromFirestoreRest(
+              projectId,
+              databaseId
+            );
+            const sourceBooks =
+              liveBooks && liveBooks.length > 0 ? liveBooks : DEFAULT_BOOKS;
+            const entries: SitemapBookEntry[] = sourceBooks.map((b) => ({
+              id: b.id,
+              featured: b.featured,
+              lastmod:
+                'lastmod' in b && typeof b.lastmod === 'string'
+                  ? b.lastmod
+                  : undefined,
+            }));
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.end(buildSitemapXml(entries));
+          });
+        },
+        configurePreviewServer(server) {
+          server.middlewares.use('/sitemap.xml', async (_req, res) => {
+            const {projectId, databaseId} = resolveBuildFirebaseIds(__dirname);
+            const liveBooks = await fetchBooksFromFirestoreRest(
+              projectId,
+              databaseId
+            );
+            const sourceBooks =
+              liveBooks && liveBooks.length > 0 ? liveBooks : DEFAULT_BOOKS;
+            const entries: SitemapBookEntry[] = sourceBooks.map((b) => ({
+              id: b.id,
+              featured: b.featured,
+              lastmod:
+                'lastmod' in b && typeof b.lastmod === 'string'
+                  ? b.lastmod
+                  : undefined,
+            }));
+            res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+            res.end(buildSitemapXml(entries));
+          });
+        },
+      },
+      // Pre-renders static SEO HTML pages at dist/books/<id>/index.html
+      // from Firestore + starter books at build time.
       {
         name: 'generate-book-seo-pages',
         apply: 'build',
-        closeBundle(error?: Error): void {
+        async closeBundle(error?: Error): Promise<void> {
           if (error) {
             return;
           }
@@ -60,65 +129,24 @@ export default defineConfig(() => {
           }
 
           const baseHtml = fs.readFileSync(indexHtmlPath, 'utf-8');
+          const {projectId, databaseId} = resolveBuildFirebaseIds(__dirname);
+          const liveBooks = await fetchBooksFromFirestoreRest(
+            projectId,
+            databaseId
+          );
 
+          const mergedMap = new Map<string, (typeof DEFAULT_BOOKS)[number]>();
           for (const book of DEFAULT_BOOKS) {
-            const title = escapeHtml(getBookSeoTitle(book));
-            const description = escapeHtml(getBookSeoDescription(book));
-            const canonical = escapeHtml(getBookCanonicalUrl(book.id));
-            const image = escapeHtml(resolveBookImageUrl(book.coverUrl));
-            const jsonLd = JSON.stringify(buildBookJsonLd(book));
+            mergedMap.set(book.id, book);
+          }
+          if (liveBooks) {
+            for (const book of liveBooks) {
+              mergedMap.set(book.id, book);
+            }
+          }
 
-            let pageHtml = baseHtml
-              .replace(/<title>[\s\S]*?<\/title>/, `<title>${title}</title>`)
-              .replace(
-                /<meta\s+name="description"[\s\S]*?\/>/,
-                `<meta name="description" content="${description}" />`
-              )
-              .replace(
-                /<link\s+rel="canonical"[\s\S]*?\/>/,
-                `<link rel="canonical" href="${canonical}" />`
-              )
-              .replace(
-                /<meta\s+property="og:type"[\s\S]*?\/>/,
-                `<meta property="og:type" content="book" />`
-              )
-              .replace(
-                /<meta\s+property="og:url"[\s\S]*?\/>/,
-                `<meta property="og:url" content="${canonical}" />`
-              )
-              .replace(
-                /<meta\s+property="og:title"[\s\S]*?\/>/,
-                `<meta property="og:title" content="${title}" />`
-              )
-              .replace(
-                /<meta\s+property="og:description"[\s\S]*?\/>/,
-                `<meta property="og:description" content="${description}" />`
-              )
-              .replace(
-                /<meta\s+property="og:image"[\s\S]*?\/>/,
-                `<meta property="og:image" content="${image}" />`
-              )
-              .replace(
-                /<meta\s+name="twitter:title"[\s\S]*?\/>/,
-                `<meta name="twitter:title" content="${title}" />`
-              )
-              .replace(
-                /<meta\s+name="twitter:description"[\s\S]*?\/>/,
-                `<meta name="twitter:description" content="${description}" />`
-              )
-              .replace(
-                /<meta\s+name="twitter:image"[\s\S]*?\/>/,
-                `<meta name="twitter:image" content="${image}" />`
-              )
-              .replace(
-                /<script id="soul-soch-jsonld" type="application\/ld\+json">[\s\S]*?<\/script>/,
-                `<script id="soul-soch-jsonld" type="application/ld+json">${jsonLd}</script>`
-              )
-              .replace(
-                /<noscript>[\s\S]*?<\/noscript>/,
-                `<noscript><main style="max-width:760px;margin:2rem auto;padding:1rem;font-family:Georgia,serif;"><h1>${escapeHtml(book.title)}</h1><p>By ${escapeHtml(book.author)} &mdash; ${escapeHtml(book.category)}</p><p>${escapeHtml(book.summary)}</p><p><a href="/">Back to Soul &amp; Soch</a></p></main></noscript>`
-              );
-
+          for (const book of mergedMap.values()) {
+            const pageHtml = injectBookSeoHtml(baseHtml, book);
             const bookDir = path.join(distDir, 'books', book.id);
             fs.mkdirSync(bookDir, {recursive: true});
             fs.writeFileSync(path.join(bookDir, 'index.html'), pageHtml, 'utf-8');

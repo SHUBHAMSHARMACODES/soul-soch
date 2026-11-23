@@ -15,6 +15,8 @@ import { BookCover } from './BookCover';
 interface BookDetailModalProps {
   book: Book | null;
   adSettings: Record<AdSlotKey, AdSetting>;
+  loading?: boolean;
+  notFoundSlug?: string | null;
   onClose: () => void;
   onAnchorClick?: (href: string) => void;
 }
@@ -22,10 +24,61 @@ interface BookDetailModalProps {
 export const BookDetailModal: React.FC<BookDetailModalProps> = ({
   book,
   adSettings,
+  loading = false,
+  notFoundSlug = null,
   onClose,
   onAnchorClick,
 }) => {
-  if (!book) return null;
+  if (!book && !loading && !notFoundSlug) return null;
+
+  if (!book) {
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-[#141210]/70 backdrop-blur-xs overflow-y-auto px-4 py-10"
+        onClick={onClose}
+        role="dialog"
+        aria-modal="true"
+        aria-label={loading ? 'Loading book summary' : 'Book not found'}
+      >
+        <div
+          className="max-w-xl mx-auto bg-[#FBF9F5] border border-[#E5DEC9] rounded-2xl p-8 text-center shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {loading ? (
+            <>
+              <BookOpen className="w-8 h-8 text-[#B57B2C] mx-auto mb-3 animate-pulse" />
+              <h2 className="font-serif-display text-2xl font-semibold text-[#1D1B18]">
+                Opening Book Summary...
+              </h2>
+              <p className="mt-2 text-sm text-[#5F584D]">
+                Fetching the latest summary and reading links.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-serif-display text-2xl font-semibold text-[#1D1B18]">
+                Book Not Found
+              </h2>
+              <p className="mt-2 text-sm text-[#5F584D]">
+                We couldn&apos;t find a published summary at this address. Explore our full library instead.
+              </p>
+              <a
+                href="/"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onClose();
+                }}
+                className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1D1B18] text-[#FAF7F0] text-sm font-medium hover:bg-[#332F2A] transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to Library</span>
+              </a>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const paragraphs = book.summary
     .split(/\n\s*\n/)
