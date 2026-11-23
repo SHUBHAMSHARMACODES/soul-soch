@@ -32,9 +32,10 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onSelect }) => {
       </div>
 
       <div className="mt-4 flex items-center justify-between gap-2">
-        <button
-          type="button"
+        <a
+          href={`/books/${book.id}`}
           onClick={(e) => {
+            e.preventDefault();
             e.stopPropagation();
             onSelect(book);
           }}
@@ -42,7 +43,7 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onSelect }) => {
         >
           <span>Read More</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
-        </button>
+        </a>
 
         {book.pdfUrl && (
           <span className="text-[11px] font-medium text-[#7D7568] whitespace-nowrap">

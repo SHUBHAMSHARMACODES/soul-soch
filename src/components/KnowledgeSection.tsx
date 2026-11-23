@@ -92,14 +92,17 @@ export const KnowledgeSection: React.FC<KnowledgeSectionProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#EAE2D3]">
-                  <button
-                    type="button"
-                    onClick={() => onSelectBook(book)}
+                  <a
+                    href={`/books/${book.id}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onSelectBook(book);
+                    }}
                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#5B554B] hover:text-[#1D1B18] cursor-pointer"
                   >
                     <BookOpen className="w-3.5 h-3.5" />
                     <span>Read Summary</span>
-                  </button>
+                  </a>
                   <a
                     href={book.pdfUrl}
                     target="_blank"

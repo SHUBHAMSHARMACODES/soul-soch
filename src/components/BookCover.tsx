@@ -117,6 +117,8 @@ export const BookCover: React.FC<BookCoverProps> = ({
           src={coverUrl}
           alt={`${title} book cover`}
           referrerPolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
           onError={() => setImgError(true)}
           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
         />

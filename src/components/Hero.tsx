@@ -16,6 +16,8 @@ export const Hero: React.FC<HeroProps> = ({ onExploreBooks, onWatchIntro }) => {
           src={HERO_IMAGE_PATH}
           alt="Reader sitting on a mountain cliff at golden hour"
           referrerPolicy="no-referrer"
+          fetchPriority="high"
+          decoding="async"
           className="w-full h-full object-cover object-center scale-x-[-1]"
         />
         {/* Measured contrast scrim for crisp headline legibility */}

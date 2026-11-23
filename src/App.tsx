@@ -21,6 +21,7 @@ import { Header } from './components/Header';
 import { Hero } from './components/Hero';
 import { AboutModal, IntroModal } from './components/IntroAboutModals';
 import { KnowledgeSection, KnowledgeTab } from './components/KnowledgeSection';
+import { SeoManager } from './components/SeoManager';
 import { Sidebar } from './components/Sidebar';
 
 function isAdminPath(): boolean {
@@ -28,6 +29,15 @@ function isAdminPath(): boolean {
     window.location.pathname.startsWith('/admin') ||
     window.location.hash === '#admin'
   );
+}
+
+function getBookIdFromPath(): string | null {
+  const match = window.location.pathname.match(/^\/books\/([^/]+)\/?$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function getInitialSearchQuery(): string {
+  return new URLSearchParams(window.location.search).get('q') || '';
 }
 
 const DEFAULT_AD_MAP: Record<AdSlotKey, AdSetting> = DEFAULT_AD_SETTINGS.reduce(
@@ -45,9 +55,12 @@ function SoulAndSochApp() {
   const [adSettings, setAdSettings] = useState<Record<AdSlotKey, AdSetting>>(DEFAULT_AD_MAP);
 
   const [selectedCategory, setSelectedCategory] = useState<BookCategory | 'All'>('All');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>(getInitialSearchQuery);
   const [showAllBooks, setShowAllBooks] = useState(false);
-  const [activeBook, setActiveBook] = useState<Book | null>(null);
+  const [activeBook, setActiveBook] = useState<Book | null>(() => {
+    const id = getBookIdFromPath();
+    return id ? DEFAULT_BOOKS.find((b) => b.id === id) || null : null;
+  });
   const [knowledgeTab, setKnowledgeTab] = useState<KnowledgeTab>('shloka');
   const [introOpen, setIntroOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -57,6 +70,11 @@ function SoulAndSochApp() {
     const unsubBooks = subscribeBooks((liveBooks) => {
       if (liveBooks.length > 0) {
         setBooks(liveBooks);
+        const urlBookId = getBookIdFromPath();
+        if (urlBookId) {
+          const matched = liveBooks.find((b) => b.id === urlBookId);
+          if (matched) setActiveBook(matched);
+        }
       }
     });
 
@@ -79,7 +97,11 @@ function SoulAndSochApp() {
 
   // Browser URL & secret Ctrl+Shift+A shortcut for hidden Admin Studio
   useEffect(() => {
-    const onPopState = () => setAdminView(isAdminPath());
+    const onPopState = () => {
+      setAdminView(isAdminPath());
+      const urlBookId = getBookIdFromPath();
+      setActiveBook(urlBookId ? books.find((b) => b.id === urlBookId) || null : null);
+    };
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
         e.preventDefault();
@@ -92,9 +114,25 @@ function SoulAndSochApp() {
       window.removeEventListener('popstate', onPopState);
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, []);
+  }, [books]);
+
+  const openBook = (book: Book) => {
+    setActiveBook(book);
+    const targetPath = `/books/${encodeURIComponent(book.id)}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  };
+
+  const closeBook = () => {
+    setActiveBook(null);
+    if (window.location.pathname.startsWith('/books/')) {
+      window.history.pushState({}, '', '/');
+    }
+  };
 
   const openAdmin = () => {
+    setActiveBook(null);
     window.history.pushState({}, '', '/admin');
     setAdminView(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -147,17 +185,21 @@ function SoulAndSochApp() {
 
   if (adminView) {
     return (
-      <AdminPanel
-        books={books}
-        insights={insights}
-        adSettings={adSettings}
-        onBackToSite={closeAdmin}
-      />
+      <>
+        <SeoManager activeBook={null} isAdmin={true} />
+        <AdminPanel
+          books={books}
+          insights={insights}
+          adSettings={adSettings}
+          onBackToSite={closeAdmin}
+        />
+      </>
     );
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F6F2EA] text-[#1D1B18]">
+      <SeoManager activeBook={activeBook} isAdmin={false} />
       <Header
         searchQuery={searchQuery}
         onSearchChange={(val) => {
@@ -265,7 +307,7 @@ function SoulAndSochApp() {
                       <BookCard
                         key={book.id}
                         book={book}
-                        onSelect={(b) => setActiveBook(b)}
+                        onSelect={openBook}
                       />
                     ))}
                   </div>
@@ -286,7 +328,7 @@ function SoulAndSochApp() {
                 onTabChange={setKnowledgeTab}
                 insights={insights}
                 books={books}
-                onSelectBook={(b) => setActiveBook(b)}
+                onSelectBook={openBook}
               />
             </div>
 
@@ -345,7 +387,7 @@ function SoulAndSochApp() {
       <BookDetailModal
         book={activeBook}
         adSettings={adSettings}
-        onClose={() => setActiveBook(null)}
+        onClose={closeBook}
         onAnchorClick={(href) => scrollToElement(href)}
       />
 
